@@ -1,0 +1,16 @@
+{"q": "How many unused annual leave days can I carry forward?", "section": "Annual leave", "must_contain": ["10"]}
+{"q": "When do I need a medical certificate for sick leave?", "section": "Sick leave", "must_contain": ["3"]}
+{"q": "How many days a week do I have to be in office?", "section": "Work from home", "must_contain": ["3"]}
+{"q": "What's the meal allowance in a metro city?", "section": "Travel and expenses", "must_contain": ["1,500"]}
+{"q": "Expense claim above 25000 who approves", "section": "Travel and expenses", "must_contain": ["director"]}
+{"q": "Is MFA mandatory and what about security keys?", "section": "Passwords and MFA", "must_contain": ["security keys"]}
+{"q": "I lost my laptop, how fast must I report it?", "section": "Laptop and device rules", "must_contain": ["1 hour"]}
+{"q": "Can customer personal data go into ChatGPT?", "section": "Data classification", "must_contain": ["never"]}
+{"q": "What region must restricted data stay in?", "section": "Data classification", "must_contain": ["asia-south1"]}
+{"q": "How often are production access reviews done?", "section": "Access reviews", "must_contain": ["quarter"]}
+{"q": "What counts as a SEV1 incident?", "section": "Severity levels", "must_contain": ["outage"]}
+{"q": "First steps after being paged for an incident", "section": "First 15 minutes", "must_contain": ["incident commander"]}
+{"q": "How do I roll back a bad Cloud Run release?", "section": "Rollback on Cloud Run", "must_contain": ["update-traffic"]}
+{"q": "When is the post-incident review due?", "section": "Post-incident review", "must_contain": ["5 working days"]}
+{"q": "How long does vendor onboarding take?", "section": "How do we onboard a new vendor?", "must_contain": ["10 working days"]}
+{"q": "Who signs off on a vendor contract worth 50 lakh?", "section": "Who approves vendor contracts?", "must_contain": ["Finance"]}
