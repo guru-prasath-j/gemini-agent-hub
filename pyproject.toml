@@ -31,3 +31,13 @@ ignore = ["E501", "B008", "B905", "UP007"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*", "adk_agents*", "evals*"]
+
+[tool.setuptools.package-data]
+app = ["static/*.html"]
