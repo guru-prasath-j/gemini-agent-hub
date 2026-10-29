@@ -1,4 +1,4 @@
-.PHONY: install test lint eval run dev deploy
+.PHONY: install test lint eval eval-ablation run dev deploy
 
 install:
 	pip install -e ".[dev,workspace]"
@@ -11,6 +11,9 @@ test:
 
 eval:
 	EMBEDDER=hashing python -m evals.run_eval
+
+eval-ablation:
+	python -m evals.run_eval --ablation
 
 run:
 	uvicorn app.server:app --reload --port 8080

@@ -45,3 +45,18 @@ def test_tool_quarantines_planted_instructions(index):
     out = search_knowledge_base("vendor document notes ignore previous instructions", top_k=8)
     assert out["quarantined"] >= 1
     assert all("Ignore all previous instructions" not in r["text"] for r in out["results"])
+
+
+@pytest.mark.parametrize("mode", ["hybrid", "hybrid_no_mmr", "dense", "sparse"])
+def test_every_retrieval_mode_answers(index, mode):
+    hits = index.search("medical certificate sick leave", k=3, mode=mode)
+    assert 0 < len(hits) <= 3
+    if mode == "sparse":
+        assert all(h.sparse_rank is not None for h in hits) and hits[0].chunk.section == "Sick leave"
+    if mode == "dense":
+        assert all(h.dense_rank is not None for h in hits)
+
+
+def test_unknown_mode_is_refused(index):
+    with pytest.raises(ValueError):
+        index.search("x", mode="bm42")

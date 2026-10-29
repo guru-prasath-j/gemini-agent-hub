@@ -1,0 +1,139 @@
+Metadata-Version: 2.4
+Name: gemini-agent-hub
+Version: 1.0.0
+Summary: Enterprise multi-agent assistant on Google ADK + Gemini: hybrid RAG, Workspace tools, guardrails, Cloud Run.
+Author: Guruprasath J
+License: MIT
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: google-adk>=2.0
+Requires-Dist: google-genai>=1.0
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn[standard]>=0.30
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: pypdf>=5.0
+Provides-Extra: workspace
+Requires-Dist: google-api-python-client>=2.100; extra == "workspace"
+Requires-Dist: google-auth>=2.30; extra == "workspace"
+Provides-Extra: db
+Requires-Dist: sqlalchemy>=2.0; extra == "db"
+Requires-Dist: psycopg[binary]>=3.2; extra == "db"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+Requires-Dist: ruff>=0.6; extra == "dev"
+Dynamic: license-file
+
+# Gemini Agent Hub
+
+**An enterprise multi-agent assistant built on Google's Agent Development Kit (ADK) and Gemini. It has hybrid RAG with citations, multimodal document ingestion, Workspace-style tool connectors, governance guardrails, and a one-command deploy to Cloud Run.**
+
+![ci](https://github.com/guru-prasath-j/gemini-agent-hub/actions/workflows/ci.yml/badge.svg)
+
+Gemini Agent Hub is a reference implementation of the pattern enterprises follow when they adopt generative AI internally. A coordinator agent routes each request to specialist agents. Those agents ground their answers in company documents and act on business systems through tools. Every turn passes through PII redaction, prompt-injection screening, role-based tool access and an audit trail that lands in BigQuery.
+
+```mermaid
+flowchart LR
+    U[User / Web UI] -->|HTTPS, IAM / IAP| R[Cloud Run · FastAPI]
+    R --> RN[ADK Runner + Session Service]
+    RN --> C{{concierge<br/>coordinator agent}}
+    C -->|transfer_to_agent| K[knowledge_agent]
+    C -->|transfer_to_agent| W[workspace_agent]
+    K --> T1[search_knowledge_base]
+    T1 --> IDX[(Hybrid index<br/>Gemini embeddings + BM25<br/>RRF fusion · MMR)]
+    W --> T2[calendar · free slots · tickets · directory]
+    T2 --> GC[Google Calendar API / demo backend]
+    subgraph Guardrails [ADK callbacks on every agent]
+      G1[PII redaction] --- G2[Prompt-injection screen] --- G3[Tool RBAC] --- G4[Audit log]
+    end
+    C -.-> Guardrails
+    K -.-> Guardrails
+    W -.-> Guardrails
+    ING[/v1/documents<br/>txt · md · PDF · images/] -->|Gemini multimodal extraction| IDX
+    G4 -->|Cloud Logging sink| BQ[(BigQuery audit dataset)]
+    RN --> G[Gemini 2.5 Flash<br/>Vertex AI or Gemini API]
+```
+
+## What it demonstrates
+
+| Capability | Where |
+|---|---|
+| **Multi-agent orchestration with ADK.** A coordinator plus specialists, routed with `transfer_to_agent`, with shared callbacks across agents | `app/agents/root.py` |
+| **RAG with citations.** Structure-aware chunking, Gemini embeddings with retrieval task types, BM25 fused by Reciprocal Rank Fusion, and MMR diversification | `app/rag/` |
+| **Multimodal ingestion.** Scanned PDFs, screenshots and forms are transcribed by Gemini into markdown, then indexed | `app/rag/ingest.py` |
+| **Connecting LLMs to enterprise tools.** A Google Calendar connector over ADC, plus ticketing and directory tools behind a backend protocol | `app/tools/workspace.py` |
+| **Security and governance.** PII redaction before the model and the logs, direct and *indirect* (document-borne) prompt-injection defence, role-based tool allowlists, and structured audit events | `app/governance/` |
+| **Serverless deployment.** Container on Cloud Run, Cloud Build pipeline, and Terraform for Artifact Registry, a least-privilege service account, a private service and a BigQuery audit sink | `Dockerfile`, `deploy/`, `infra/terraform/` |
+| **Evaluation as a quality gate.** A golden set with recall@k and MRR in CI, plus a live mode that checks answer facts, citations and p50/p95 latency | `evals/` |
+| **Deterministic tests.** A scripted fake LLM drives the real ADK Runner end to end (routing, tools, RBAC, injection blocking, SSE streaming), with no API key needed | `tests/` |
+
+## Quickstart
+
+```bash
+git clone https://github.com/guru-prasath-j/gemini-agent-hub && cd gemini-agent-hub
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,workspace]"
+cp .env.example .env            # add a free Gemini API key from aistudio.google.com
+set -a; source .env; set +a
+
+make test                       # 23 tests, fully offline
+make eval                       # retrieval quality gate
+make run                        # http://localhost:8080 (chat UI + API)
+make dev                        # ADK dev UI with event traces at http://localhost:8000
+```
+
+To run with no credentials at all, set `EMBEDDER=hashing`. Retrieval, guardrails and tests all work offline. Only the chat turns need Gemini.
+
+### Try it
+
+```bash
+curl -s localhost:8080/v1/chat -H 'content-type: application/json' \
+  -d '{"message":"How do I roll back a bad Cloud Run release?","role":"employee"}' | jq
+
+# guests can read docs but cannot act
+curl -s localhost:8080/v1/chat -H 'content-type: application/json' \
+  -d '{"message":"My laptop was stolen, open a P1 ticket","role":"guest"}' | jq .reply
+
+# add a scanned PDF or a screenshot to the knowledge base (admin)
+curl -s localhost:8080/v1/documents -H 'x-user-role: admin' -F file=@policy-scan.pdf | jq
+```
+
+`data/sample_docs/vendor-faq.md` contains a planted instruction ("Ignore all previous instructions…"). Ask about vendor onboarding and you'll see that passage quarantined in the audit log instead of reaching the model.
+
+## Deploy to Google Cloud
+
+```bash
+export PROJECT_ID=my-project REGION=asia-south1
+gcloud config set project $PROJECT_ID
+
+# 1. infrastructure: APIs, Artifact Registry, runtime SA, BigQuery audit sink
+cd infra/terraform
+terraform init
+terraform apply -var project_id=$PROJECT_ID \
+  -var image=$REGION-docker.pkg.dev/$PROJECT_ID/agent-hub/gemini-agent-hub:bootstrap
+cd ../..
+
+# 2. test, build, push, deploy (Cloud Build)
+make deploy
+```
+
+The service is deployed **private** (`--no-allow-unauthenticated`). Grant `roles/run.invoker` to a group, or put it behind IAP and derive the role from the verified identity rather than the request body. On Vertex AI, the runtime service account only holds `aiplatform.user`, plus log, metric and trace writers. No API keys are stored.
+
+## Design notes
+
+- **Why hybrid retrieval?** Policy questions mix exact tokens ("SEV1", "asia-south1", "INR 25,000") with paraphrase. BM25 catches the tokens, embeddings catch the meaning, and RRF merges the two without having to tune score scales.
+- **Why guardrails in callbacks?** `before_model_callback`, `before_tool_callback` and `after_tool_callback` run for *every* agent. A new specialist added later inherits redaction, RBAC and auditing automatically.
+- **Indirect injection.** Retrieved passages are screened before they're returned to the model, and the knowledge agent is told that passages are data, not instructions.
+- **Swappable backends.** The index API mirrors Vertex AI Vector Search and AlloyDB pgvector, sessions switch to Cloud SQL via `SESSION_DB_URL` (ADK `DatabaseSessionService`), and the calendar switches to Google with `WORKSPACE_BACKEND=google`.
+
+## Roadmap
+
+- Vertex AI Vector Search backend and a Cloud Run Job for re-indexing from GCS
+- Model Armor and Sensitive Data Protection in place of the regex layers
+- A2A endpoint so other agents can call the hub
+- OpenTelemetry traces to Cloud Trace
+
+## License
+
+MIT © Guruprasath J

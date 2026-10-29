@@ -14,3 +14,19 @@
 {"q": "When is the post-incident review due?", "section": "Post-incident review", "must_contain": ["5 working days"]}
 {"q": "How long does vendor onboarding take?", "section": "How do we onboard a new vendor?", "must_contain": ["10 working days"]}
 {"q": "Who signs off on a vendor contract worth 50 lakh?", "section": "Who approves vendor contracts?", "must_contain": ["Finance"]}
+{"q": "How many holidays roll over into next year?", "section": "Annual leave", "must_contain": ["10"], "set": "paraphrase"}
+{"q": "Do I need a doctor's note if I'm unwell for four days?", "section": "Sick leave", "must_contain": ["certificate"], "set": "paraphrase"}
+{"q": "Can I work remotely for a fortnight?", "section": "Work from home", "must_contain": ["2 weeks"], "set": "paraphrase"}
+{"q": "What's the daily food budget outside big cities?", "section": "Travel and expenses", "must_contain": ["1,000"], "set": "paraphrase"}
+{"q": "How far ahead should I reserve a flight?", "section": "Travel and expenses", "must_contain": ["7 days"], "set": "paraphrase"}
+{"q": "What's the shortest a login secret can be?", "section": "Passwords and MFA", "must_contain": ["14"], "set": "paraphrase"}
+{"q": "Can I read work mail on my own phone?", "section": "Laptop and device rules", "must_contain": ["managed mobile profile"], "set": "paraphrase"}
+{"q": "Someone stole my computer from the cafe, what now?", "section": "Laptop and device rules", "must_contain": ["1 hour"], "set": "paraphrase"}
+{"q": "Where may we keep users' private information?", "section": "Data classification", "must_contain": ["asia-south1"], "set": "paraphrase"}
+{"q": "What happens if my boss doesn't re-confirm my prod permissions?", "section": "Access reviews", "must_contain": ["revoked"], "set": "paraphrase"}
+{"q": "The whole site is down for customers, how serious is that?", "section": "Severity levels", "must_contain": ["SEV1"], "set": "paraphrase"}
+{"q": "Who coordinates when something breaks in production?", "section": "First 15 minutes", "must_contain": ["incident commander"], "set": "paraphrase"}
+{"q": "We shipped a broken build an hour ago, what's the first move?", "section": "First 15 minutes", "must_contain": ["roll back"], "set": "paraphrase"}
+{"q": "Do we need change approval to revert during a big outage?", "section": "Rollback on Cloud Run", "must_contain": ["change-board"], "set": "paraphrase"}
+{"q": "What paperwork does a new supplier have to hand over?", "section": "How do we onboard a new vendor?", "must_contain": ["NDA"], "set": "paraphrase"}
+{"q": "Who can sign a small supplier agreement?", "section": "Who approves vendor contracts?", "must_contain": ["department head"], "set": "paraphrase"}

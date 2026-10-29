@@ -41,6 +41,34 @@ flowchart LR
 | **Evaluation as a quality gate.** A golden set with recall@k and MRR in CI, plus a live mode that checks answer facts, citations and p50/p95 latency | `evals/` |
 | **Deterministic tests.** A scripted fake LLM drives the real ADK Runner end to end (routing, tools, RBAC, injection blocking, SSE streaming), with no API key needed | `tests/` |
 
+## Retrieval results
+
+`make eval-ablation` scores each retrieval mode on 32 golden questions. Sixteen are the originals; the
+other sixteen are **paraphrased to avoid the documents' wording** ("How many holidays roll over?" for
+"unused days carry over"). That gap is where keyword search breaks and embeddings have to carry the load.
+
+Offline run, `EMBEDDER=hashing` (a hashing embedder with no semantics, so "dense" here is still
+lexical), k=3:
+
+| Mode | Original (16) recall@3 / MRR | Paraphrased (16) recall@3 / MRR |
+|---|---|---|
+| BM25 only (`sparse`) | 0.94 / 0.91 | 0.56 / 0.53 |
+| Embeddings only (`dense`) | 0.88 / 0.70 | 0.44 / 0.32 |
+| Hybrid RRF, no MMR | **1.00** / 0.85 | **0.62** / 0.53 |
+| Hybrid RRF + MMR (default) | 0.94 / 0.83 | **0.62** / 0.52 |
+
+What this shows:
+
+- **Fusion beats either retriever alone** on both sets.
+- **MMR costs recall at k=3 on this corpus.** Each answer lives in one section, so trading relevance
+  for diversity pushed a relevant chunk out (1.00 → 0.94). MMR earns its keep on larger corpora with
+  near-duplicate chunks; here it should be tuned (higher `mmr_lambda`) or off.
+- **Paraphrases are the real test.** Every lexical method falls to about 0.6, which is the measured
+  case for semantic embeddings. Run `EMBEDDER=gemini make eval-ablation` with a Gemini key for the
+  same table on `text-embedding` vectors.
+
+The CI gate (`make eval`) still runs on the 16 original questions with `--min-recall 0.9`.
+
 ## Quickstart
 
 ```bash

@@ -92,9 +92,16 @@ class HybridIndex:
             scores.append(s)
         return scores
 
+    MODES = ("hybrid", "hybrid_no_mmr", "dense", "sparse")
+
     def search(
-        self, query: str, k: int = 4, rrf_k: int = 60, mmr_lambda: float = 0.7, pool: int = 20
+        self, query: str, k: int = 4, rrf_k: int = 60, mmr_lambda: float = 0.7, pool: int = 20,
+        mode: str = "hybrid",
     ) -> list[Hit]:
+        """mode: 'hybrid' (RRF of dense + BM25, then MMR), 'hybrid_no_mmr', or one retriever
+        alone ('dense' / 'sparse'). The non-default modes exist for the eval ablation."""
+        if mode not in self.MODES:
+            raise ValueError(f"mode must be one of {self.MODES}")
         if not self.chunks:
             return []
         qv = self.embedder.embed_query(query)
@@ -106,8 +113,14 @@ class HybridIndex:
         fused: dict[int, float] = {}
         d_rank = {i: r for r, i in enumerate(dense_order)}
         s_rank = {i: r for r, i in enumerate(sparse_order)}
-        for i in set(dense_order) | set(sparse_order):
-            fused[i] = sum(1.0 / (rrf_k + rank[i] + 1) for rank in (d_rank, s_rank) if i in rank)
+        ranks = {"dense": (d_rank,), "sparse": (s_rank,)}.get(mode, (d_rank, s_rank))
+        for i in set().union(*ranks):
+            fused[i] = sum(1.0 / (rrf_k + rank[i] + 1) for rank in ranks if i in rank)
+        if not fused:
+            return []
+        if mode != "hybrid":  # no MMR: plain fused order
+            return [Hit(self.chunks[i], round(fused[i], 5), d_rank.get(i), s_rank.get(i))
+                    for i in sorted(fused, key=lambda i: -fused[i])[:k]]
 
         candidates = sorted(fused, key=lambda i: -fused[i])
         selected: list[int] = []
